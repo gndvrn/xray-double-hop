@@ -1,0 +1,105 @@
+{
+    "log": {
+        "loglevel": "warning"
+    },
+    "dns": {
+        "servers": [
+            "https+local://8.8.8.8/dns-query",
+            "https+local://1.1.1.1/dns-query"
+        ],
+        "queryStrategy": "UseIPv4"
+    },
+    "inbounds": [
+        {
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
+            "tag": "exit-hop",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "<paste exit node vps client id here>", // xray uuid
+                        "flow": "xtls-rprx-vision"
+                    }
+                ],
+                "decryption": "none"
+            },
+            "streamSettings": {
+                "network": "tcp",
+                "security": "reality",
+                "realitySettings": {
+                    "dest": "gstatic.com:443",
+                    "serverNames": [
+                        "gstatic.com"
+                    ],
+                    "privateKey": "<paste exit node vps private key here>", // xray x25519
+                    "shortIds": [
+                        ""
+                    ]
+                }
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": [
+                    "http",
+                    "tls",
+                    "quic"
+                ],
+                "routeOnly": true,
+                "metadataOnly": false
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom",
+            "tag": "direct"
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "block"
+        }
+    ],
+    "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+            {
+                "type": "field",
+                "inboundTag": [
+                    "exit-hop"
+                ],
+                "domain": [
+                    "geosite:category-ru"
+                ],
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "inboundTag": [
+                    "exit-hop"
+                ],
+                "ip": [
+                    "geoip:ru",
+                    "geoip:private"
+                ],
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "inboundTag": [
+                    "exit-hop"
+                ],
+                "network": "udp",
+                "port": "443",
+                "outboundTag": "block"
+            },
+            {
+                "type": "field",
+                "inboundTag": [
+                    "exit-hop"
+                ],
+                "outboundTag": "direct"
+            }
+        ]
+    }
+}
