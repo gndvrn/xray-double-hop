@@ -1,3 +1,2 @@
-xray_exit_server.json
-xray_relay_server.json
-nginx_relay_server.conf
+user-configs/*
+!user-configs/.gitkeep
