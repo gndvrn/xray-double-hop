@@ -17,3 +17,9 @@ flowchart LR
     DIRECT --> NET[(Internet)]
     PROXY --> NET
 ```
+
+## Shadowrocket
+
+### Routing profile
+
+[Link](https://raw.githubusercontent.com/gndvrn/xray-double-hop/refs/heads/master/shadowrocket/routing.conf)
