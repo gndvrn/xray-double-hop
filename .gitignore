@@ -1,9 +1,6 @@
-user-configs/*
-!user-configs/relay-servers/
-!user-configs/exit-servers/
-user-configs/relay-servers/*
-!user-configs/relay-servers/.gitkeep
-user-configs/exit-servers/*
-!user-configs/exit-servers/.gitkeep
-
 .cursorignore
+
+# configs: track only *.example templates
+configs/**
+!configs/**/
+!configs/**/*.example

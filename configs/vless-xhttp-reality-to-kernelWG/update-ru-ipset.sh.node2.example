@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+TMP=$(mktemp)
+URL="https://www.ipdeny.com/ipblocks/data/aggregated/ru-aggregated.zone"
+
+curl -fsSL "$URL" -o "$TMP"
+
+ipset create ru_ips hash:net family inet -exist
+ipset flush ru_ips
+
+while read -r cidr; do
+  [[ -z "$cidr" || "$cidr" =~ ^# ]] && continue
+  ipset add ru_ips "$cidr" -exist
+done < "$TMP"
+
+rm -f "$TMP"

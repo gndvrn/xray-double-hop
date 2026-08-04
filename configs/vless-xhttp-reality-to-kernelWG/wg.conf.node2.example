@@ -1,0 +1,76 @@
+# =============================================================================
+# WireGuard — node 2 (exit / hop 2, NAT в интернет)
+# Файл на сервере: /etc/wireguard/wg0.conf
+#
+# Схема:
+#   node 1 → wg0 → этот сервер → MASQUERADE → Интернет
+#
+# node 2 слушает UDP 51820, принимает туннель от node 1 и делает NAT для его
+# WG-адреса. PostUp блокирует форвардинг в RU через ipset ru_ips.
+# =============================================================================
+#
+# --- Внутренние IP (должны совпадать с wg.conf.node1.example) ----------------
+#
+#   Узел          | WG-адрес (Address)     | Где прописать
+#   --------------+------------------------+---------------------------
+#   node 1        | 10.100.0.1/32          | wg.conf.node1.example
+#   node 2        | 10.100.0.2/32          | этот файл, [Interface] Address
+#
+#   В PostUp/PostDown ниже 10.100.0.1 — это WG-IP node 1 (источник NAT).
+#   Замените ens3 на имя публичного интерфейса: ip -o link show | awk -F': ' '{print $2}'
+#
+# --- Генерация ключей (на КАЖДОМ сервере отдельно) ---------------------------
+#
+#   umask 077
+#   wg genkey | tee /etc/wireguard/node-private.key | wg pubkey > /etc/wireguard/node-public.key
+#   chmod 600 /etc/wireguard/node-private.key
+#
+#   PrivateKey — содержимое node-private.key (никому не передавать).
+#   PublicKey  — содержимое node-public.key (отдаётся второму узлу).
+#
+# --- Куда какой ключ и IP ----------------------------------------------------
+#
+#   Значение                  | node 1                 | node 2 (этот файл)
+#   --------------------------+------------------------+---------------------------
+#   PrivateKey                | ключ, сгенер. на node1 | ключ, сгенер. на node2
+#   [Peer] PublicKey          | публичный ключ node 2  | публичный ключ node 1
+#   [Interface] Address       | 10.100.0.1/32          | 10.100.0.2/32
+#   [Peer] AllowedIPs         | —                      | 10.100.0.1/32
+#
+# --- Пример (подставьте свои значения) ---------------------------------------
+#
+#   NODE1_WG_IP=10.100.0.1
+#   NODE2_WG_IP=10.100.0.2
+#   PUBLIC_IFACE=ens3
+#
+#   # на node 1:
+#   wg genkey | tee node1.key | wg pubkey > node1.pub
+#   # на node 2:
+#   wg genkey | tee node2.key | wg pubkey > node2.pub
+#
+#   node1 [Interface] PrivateKey  ← node1.key
+#   node1 [Peer]      PublicKey   ← node2.pub
+#   node2 [Interface] PrivateKey  ← node2.key
+#   node2 [Peer]      PublicKey   ← node1.pub
+#
+# --- После правок ------------------------------------------------------------
+#
+#   sysctl -w net.ipv4.ip_forward=1
+#   systemctl enable --now wg-quick@wg0
+#
+# =============================================================================
+
+[Interface]
+Address = 10.100.0.2/32
+ListenPort = 51820
+PrivateKey = <private key сгенерированный на node 2>
+
+PostUp   = /usr/local/bin/update-ru-ipset.sh
+PostUp   = iptables -t nat -A POSTROUTING -s 10.100.0.1/32 -o ens3 -j MASQUERADE
+PostUp   = iptables -I FORWARD 1 -i wg0 -o ens3 -m set --match-set ru_ips dst -j REJECT --reject-with icmp-net-unreachable
+PostDown = iptables -t nat -D POSTROUTING -s 10.100.0.1/32 -o ens3 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -o ens3 -m set --match-set ru_ips dst -j REJECT --reject-with icmp-net-unreachable
+
+[Peer]
+PublicKey = <public key сгенерированный на node 1>
+AllowedIPs = 10.100.0.1/32

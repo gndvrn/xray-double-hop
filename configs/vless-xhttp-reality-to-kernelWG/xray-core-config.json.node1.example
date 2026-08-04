@@ -1,0 +1,62 @@
+{
+    "log": {
+        "loglevel": "none"
+    },
+    "inbounds": [
+        {
+            "listen": "0.0.0.0",
+            "port": 443,
+            "protocol": "vless",
+            "settings": {
+                "decryption": "none",
+                "clients": [
+                    {
+                        "id": "<uuid>", // xray uuid
+                        "email": "client-name1"
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "xhttp",
+                "xhttpSettings": {
+                    "path": "/<some random uri>"
+                },
+                "security": "reality",
+                "realitySettings": {
+                    "target": "8001",
+                    "xver": 1,
+                    "serverNames": [
+                        "<your-domain.com>"
+                    ],
+                    "privateKey": "<private key (password)>", // xray x25519
+                    "shortIds": [
+                        ""
+                    ]
+                }
+            },
+            "tag": "hop1-in"
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom",
+            "settings": {
+                "domainStrategy": "UseIPv4"
+            },
+            "streamSettings": {
+                "sockopt": {
+                    "interface": "wg0"
+                }
+            },
+            "tag": "hop2-in"
+        }
+    ],
+    "routing": {
+        "rules": [
+            {
+                "inboundTag": "hop1-in",
+                "outboundTag": "hop2-in"
+            }
+        ]
+    }
+}

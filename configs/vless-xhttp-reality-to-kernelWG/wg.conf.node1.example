@@ -1,0 +1,68 @@
+# =============================================================================
+# WireGuard — node 1 (relay / hop 1, клиентский Xray)
+# Файл на сервере: /etc/wireguard/wg0.conf
+#
+# Схема:
+#   Клиент → Xray (node 1, публичный IP) → wg0 → node 2 (exit, NAT) → Интернет
+#
+# node 1 инициирует туннель к node 2 (Endpoint). Table = off — маршруты задаёт Xray
+# через sockopt.interface = "wg0", а не системная таблица маршрутизации.
+# =============================================================================
+#
+# --- Внутренние IP (point-to-point /32, подсеть на ваш выбор) ----------------
+#
+#   Узел          | WG-адрес (Address)     | Где прописать
+#   --------------+------------------------+---------------------------
+#   node 1        | 10.100.0.1/32          | этот файл, [Interface] Address
+#   node 2        | 10.100.0.2/32          | wg.conf.node2.example, [Interface] Address
+#
+#   Можно взять любую RFC1918 пару, главное — не пересекаться с LAN серверов
+#   и использовать одни и те же адреса в обоих конфигах симметрично.
+#
+# --- Генерация ключей (на КАЖДОМ сервере отдельно) ---------------------------
+#
+#   umask 077
+#   wg genkey | tee /etc/wireguard/node-private.key | wg pubkey > /etc/wireguard/node-public.key
+#   chmod 600 /etc/wireguard/node-private.key
+#
+#   PrivateKey — содержимое node-private.key (никому не передавать).
+#   PublicKey  — содержимое node-public.key (отдаётся второму узлу).
+#
+# --- Куда какой ключ и IP ----------------------------------------------------
+#
+#   Значение                  | node 1 (этот файл)     | node 2
+#   --------------------------+------------------------+---------------------------
+#   PrivateKey                | ключ, сгенер. на node1 | ключ, сгенер. на node2
+#   [Peer] PublicKey          | публичный ключ node 2  | публичный ключ node 1
+#   [Interface] Address       | 10.100.0.1/32          | 10.100.0.2/32
+#   [Peer] AllowedIPs (node2) | —                      | 10.100.0.1/32
+#   Endpoint                  | публичный IP node 2    | —
+#
+# --- Пример (подставьте свои значения) ---------------------------------------
+#
+#   NODE1_WG_IP=10.100.0.1
+#   NODE2_WG_IP=10.100.0.2
+#   NODE2_PUBLIC_IP=203.0.113.50
+#
+#   # на node 1:
+#   wg genkey | tee node1.key | wg pubkey > node1.pub
+#   # на node 2:
+#   wg genkey | tee node2.key | wg pubkey > node2.pub
+#
+#   node1 [Interface] PrivateKey  ← node1.key
+#   node1 [Peer]      PublicKey   ← node2.pub
+#   node2 [Interface] PrivateKey  ← node2.key
+#   node2 [Peer]      PublicKey   ← node1.pub
+#
+# =============================================================================
+
+[Interface]
+Address = 10.100.0.1/32
+PrivateKey = <private key сгенерированный на node 1>
+Table = off
+
+[Peer]
+PublicKey = <public key сгенерированный на node 2>
+Endpoint = <публичный IP node 2>:51820
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
